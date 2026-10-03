@@ -3,6 +3,7 @@ from asyncio import sleep
 from logging import getLogger
 import os
 from os import getcwd, path, remove
+from platform import machine
 from typing import TYPE_CHECKING, List, TypedDict
 if TYPE_CHECKING:
     from .main import PluginManager
@@ -20,6 +21,21 @@ if TYPE_CHECKING:
 
 
 logger = getLogger("Updater")
+
+def _get_linux_architecture() -> str:
+    architecture = machine().lower()
+    if architecture in ("aarch64", "arm64"):
+        return "aarch64"
+    if architecture in ("x86_64", "amd64"):
+        return "x86_64"
+    raise RuntimeError(f"Unsupported Linux architecture: {architecture}")
+
+def _get_loader_asset_name() -> str:
+    if not ON_LINUX:
+        return "PluginLoader.exe"
+    if _get_linux_architecture() == "aarch64":
+        return "PluginLoader-aarch64"
+    return "PluginLoader"
 
 class RemoteVerAsset(TypedDict):
     name: str
@@ -138,7 +154,7 @@ class Updater:
                 pass
             await sleep(60 * 60 * 6) # 6 hours
 
-    async def download_decky_binary(self, download_url: str, version: str, is_zip: bool = False, size_in_bytes: int | None = None):
+    async def download_decky_binary(self, download_url: str, version: str, is_zip: bool = False, size_in_bytes: int | None = None, archive_filename: str | None = None):
         download_filename = "PluginLoader" if ON_LINUX else "PluginLoader.exe"
         download_temp_filename = download_filename + ".new"
 
@@ -168,8 +184,9 @@ class Updater:
             remove(path.join(getcwd(), download_filename))
             if (is_zip):
                 with zipfile.ZipFile(path.join(getcwd(), download_temp_filename), 'r') as file:
-                    file.getinfo(download_filename).filename = download_filename + ".unzipped"
-                    file.extract(download_filename)
+                    archive_member = file.getinfo(archive_filename or download_filename)
+                    archive_member.filename = download_filename + ".unzipped"
+                    file.extract(archive_member)
                 remove(path.join(getcwd(), download_temp_filename))
                 shutil.move(path.join(getcwd(), download_filename + ".unzipped"), path.join(getcwd(), download_filename))
             else:
@@ -196,10 +213,10 @@ class Updater:
         version = self.remoteVer["tag_name"]
         download_url = None
         size_in_bytes = None
-        download_filename = "PluginLoader" if ON_LINUX else "PluginLoader.exe"
+        asset_name = _get_loader_asset_name()
 
         for x in self.remoteVer["assets"]:
-            if x["name"] == download_filename:
+            if x["name"] == asset_name:
                 download_url = x["browser_download_url"]
                 size_in_bytes = x["size"]
                 break
@@ -263,6 +280,7 @@ class Updater:
 
     async def download_testing_version(self, pr_id: int, sha_id: str):
         down_id = ''
+        linux_artifact_name = f"PluginLoader-{_get_linux_architecture()}" if ON_LINUX else None
         #Get all the associated workflow run for the given sha_id code hash
         async with ClientSession() as web:
             async with web.request("GET", "https://api.github.com/repos/SteamDeckHomebrew/decky-loader/actions/runs", 
@@ -283,11 +301,24 @@ class Updater:
                     jresp = await res.json()
                     #If the request found at least one artifact to download...
                     if int(jresp['total_count']) != 0:
-                        # this assumes that the artifact we want is the first one!
-                        artifact = jresp['artifacts'][0]
+                        if linux_artifact_name:
+                            artifact = next(
+                                (item for item in jresp['artifacts'] if item['name'] == linux_artifact_name),
+                                None,
+                            )
+                            if artifact is None:
+                                raise RuntimeError(f"Workflow artifact {linux_artifact_name} not found.")
+                        else:
+                            artifact = jresp['artifacts'][0]
                         down_link = f"https://nightly.link/SteamDeckHomebrew/decky-loader/actions/artifacts/{artifact['id']}.zip"
                         #Then fetch it and restart itself
-                        await self.download_decky_binary(down_link, f'PR-{pr_id}', is_zip=True, size_in_bytes=artifact.get('size_in_bytes',None))
+                        await self.download_decky_binary(
+                            down_link,
+                            f'PR-{pr_id}',
+                            is_zip=True,
+                            size_in_bytes=artifact.get('size_in_bytes', None),
+                            archive_filename=_get_loader_asset_name() if ON_LINUX else None,
+                        )
         else:
             logger.error("workflow run not found", str(works))
             raise Exception("Workflow run not found.")
