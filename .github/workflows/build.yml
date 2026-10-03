@@ -7,6 +7,9 @@ on:
   # schedule:
   #   - cron: '0 13 * * *' # run at 1 PM UTC
 
+permissions:
+  contents: read
+
 jobs:
   build:
     name: Build PluginLoader (${{ matrix.architecture }})
@@ -63,7 +66,9 @@ jobs:
       run: |
         poetry dynamic-versioning 
         pyinstaller pyinstaller.spec
-        mv dist/PluginLoader "dist/${{ matrix.asset_name }}"
+        if [ "${{ matrix.asset_name }}" != "PluginLoader" ]; then
+          mv dist/PluginLoader "dist/${{ matrix.asset_name }}"
+        fi
 
     - name: Upload package artifact ⬆️
       if: ${{ !env.ACT }}
