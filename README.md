@@ -89,6 +89,12 @@ We are sorry to see you go! If you are considering uninstalling because you are 
 
 Now that you have Decky Loader installed, you can start using plugins. Each plugin is maintained by a different developer and has its own uses, but most follow a general structure outlined below.
 
+### Steam Frame (experimental ARM64 branch)
+
+Use an ARM64 loader built from this branch. Upstream releases without a `PluginLoader-aarch64` asset cannot be installed on Frame. ARM64 support does not make plugins with x86-only native binaries compatible.
+
+Installation support does not provide a Steam Frame menu entry. The experimental Frame-specific UI integration has been removed.
+
 ### 📦 Plugins
 
 1. Press the <img src="./docs/images/light/qam.svg#gh-dark-mode-only" height=16><img src="./docs/images/dark/qam.svg#gh-light-mode-only" height=16> button and navigate to the <img src="./docs/images/light/plug.svg#gh-dark-mode-only" height=16><img src="./docs/images/dark/plug.svg#gh-light-mode-only" height=16> icon. This is the Decky menu used for interacting with plugins and the loader itself.
