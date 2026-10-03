@@ -9,8 +9,17 @@ on:
 
 jobs:
   build:
-    name: Build PluginLoader
-    runs-on: ubuntu-22.04
+    name: Build PluginLoader (${{ matrix.architecture }})
+    strategy:
+      matrix:
+        include:
+          - architecture: x86_64
+            runner: ubuntu-22.04
+            asset_name: PluginLoader
+          - architecture: aarch64
+            runner: ubuntu-24.04-arm
+            asset_name: PluginLoader-aarch64
+    runs-on: ${{ matrix.runner }}
 
     steps:
     - name: Checkout 🧰
@@ -54,16 +63,20 @@ jobs:
       run: |
         poetry dynamic-versioning 
         pyinstaller pyinstaller.spec
+        if [ "${{ matrix.asset_name }}" != "PluginLoader" ]; then
+          mv dist/PluginLoader "dist/${{ matrix.asset_name }}"
+        fi
 
     - name: Upload package artifact ⬆️
       if: ${{ !env.ACT }}
       uses: actions/upload-artifact@v4
       with:
-        name: PluginLoader
-        path: ./backend/dist/PluginLoader
+        name: PluginLoader-${{ matrix.architecture }}
+        path: ./backend/dist/${{ matrix.asset_name }}
 
     - name: Download package artifact locally
       if: ${{ env.ACT }}
       uses: actions/upload-artifact@v4
       with:
-        path: ./backend/dist/PluginLoader
+        name: PluginLoader-${{ matrix.architecture }}
+        path: ./backend/dist/${{ matrix.asset_name }}
