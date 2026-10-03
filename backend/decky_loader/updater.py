@@ -139,7 +139,7 @@ class Updater:
                 pass
             await sleep(60 * 60 * 6) # 6 hours
 
-    async def download_decky_binary(self, download_url: str, version: str, is_zip: bool = False, size_in_bytes: int | None = None):
+    async def download_decky_binary(self, download_url: str, version: str, is_zip: bool = False, size_in_bytes: int | None = None, archive_filename: str | None = None):
         download_filename = "PluginLoader" if ON_LINUX else "PluginLoader.exe"
         download_temp_filename = download_filename + ".new"
 
@@ -169,8 +169,9 @@ class Updater:
             remove(path.join(getcwd(), download_filename))
             if (is_zip):
                 with zipfile.ZipFile(path.join(getcwd(), download_temp_filename), 'r') as file:
-                    file.getinfo(download_filename).filename = download_filename + ".unzipped"
-                    file.extract(download_filename)
+                    archive_filename = archive_filename or download_filename
+                    file.getinfo(archive_filename).filename = download_filename + ".unzipped"
+                    file.extract(archive_filename)
                 remove(path.join(getcwd(), download_temp_filename))
                 shutil.move(path.join(getcwd(), download_filename + ".unzipped"), path.join(getcwd(), download_filename))
             else:
@@ -294,11 +295,34 @@ class Updater:
                     jresp = await res.json()
                     #If the request found at least one artifact to download...
                     if int(jresp['total_count']) != 0:
-                        # this assumes that the artifact we want is the first one!
-                        artifact = jresp['artifacts'][0]
+                        archive_filename = None
+                        if ON_LINUX:
+                            architecture = machine().lower()
+                            if architecture in ("aarch64", "arm64"):
+                                artifact_name = "PluginLoader-aarch64"
+                                archive_filename = "PluginLoader-aarch64"
+                            elif architecture in ("x86_64", "amd64"):
+                                artifact_name = "PluginLoader-x86_64"
+                                archive_filename = "PluginLoader"
+                            else:
+                                raise RuntimeError(f"Unsupported Linux architecture: {architecture}")
+                            artifact = next(
+                                (item for item in jresp['artifacts'] if item["name"] == artifact_name),
+                                None,
+                            )
+                            if artifact is None:
+                                raise RuntimeError(f"Build artifact not found: {artifact_name}")
+                        else:
+                            artifact = jresp['artifacts'][0]
                         down_link = f"https://nightly.link/SteamDeckHomebrew/decky-loader/actions/artifacts/{artifact['id']}.zip"
                         #Then fetch it and restart itself
-                        await self.download_decky_binary(down_link, f'PR-{pr_id}', is_zip=True, size_in_bytes=artifact.get('size_in_bytes',None))
+                        await self.download_decky_binary(
+                            down_link,
+                            f'PR-{pr_id}',
+                            is_zip=True,
+                            size_in_bytes=artifact.get('size_in_bytes', None),
+                            archive_filename=archive_filename,
+                        )
         else:
             logger.error("workflow run not found", str(works))
             raise Exception("Workflow run not found.")
