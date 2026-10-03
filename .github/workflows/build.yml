@@ -7,6 +7,9 @@ on:
   # schedule:
   #   - cron: '0 13 * * *' # run at 1 PM UTC
 
+permissions:
+  contents: read
+
 jobs:
   build:
     name: Build PluginLoader (${{ matrix.architecture }})
