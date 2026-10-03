@@ -3,6 +3,7 @@ from asyncio import sleep
 from logging import getLogger
 import os
 from os import getcwd, path, remove
+from platform import machine
 from typing import TYPE_CHECKING, List, TypedDict
 if TYPE_CHECKING:
     from .main import PluginManager
@@ -197,9 +198,19 @@ class Updater:
         download_url = None
         size_in_bytes = None
         download_filename = "PluginLoader" if ON_LINUX else "PluginLoader.exe"
+        if ON_LINUX:
+            architecture = machine().lower()
+            if architecture in ("aarch64", "arm64"):
+                asset_name = "PluginLoader-aarch64"
+            elif architecture in ("x86_64", "amd64"):
+                asset_name = "PluginLoader"
+            else:
+                raise RuntimeError(f"Unsupported Linux architecture: {architecture}")
+        else:
+            asset_name = download_filename
 
         for x in self.remoteVer["assets"]:
-            if x["name"] == download_filename:
+            if x["name"] == asset_name:
                 download_url = x["browser_download_url"]
                 size_in_bytes = x["size"]
                 break
