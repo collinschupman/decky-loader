@@ -24,9 +24,10 @@ import PluginInstallModal from './components/modals/PluginInstallModal';
 import PluginUninstallModal from './components/modals/PluginUninstallModal';
 import NotificationBadge from './components/NotificationBadge';
 import PluginView from './components/PluginView';
-import { useQuickAccessVisible } from './components/QuickAccessVisibleState';
+import { QuickAccessVisibleStateProvider, useQuickAccessVisible } from './components/QuickAccessVisibleState';
 import WithSuspense from './components/WithSuspense';
 import ErrorBoundaryHook from './errorboundary-hook';
+import FrameMenuHook, { FRAME_DECKY_ROUTE } from './frame-menu-hook';
 import { FrozenPluginService } from './frozen-plugins-service';
 import { HiddenPluginsService } from './hidden-plugins-service';
 import Logger from './logger';
@@ -70,6 +71,7 @@ class PluginLoader extends Logger {
   private plugins: Plugin[] = [];
   public errorBoundaryHook: ErrorBoundaryHook = new ErrorBoundaryHook();
   private tabsHook: TabsHook = new TabsHook();
+  private frameMenuHook: FrameMenuHook = new FrameMenuHook();
   public routerHook: RouterHook = new RouterHook();
   public toaster: Toaster = new Toaster();
   private deckyState: DeckyState = new DeckyState();
@@ -111,21 +113,36 @@ class PluginLoader extends Logger {
       return <NotificationBadge show={(updates && updates.size > 0) || hasLoaderUpdate} />;
     };
 
+    const PluginPanel = () => (
+      <DeckyStateContextProvider deckyState={this.deckyState}>
+        <PluginView />
+      </DeckyStateContextProvider>
+    );
+    const tabIcon = (
+      <DeckyStateContextProvider deckyState={this.deckyState}>
+        <FaPlug />
+        <TabBadge />
+      </DeckyStateContextProvider>
+    );
+
     this.tabsHook.add({
       id: QuickAccessTab.Decky,
       title: null,
-      content: (
-        <DeckyStateContextProvider deckyState={this.deckyState}>
-          <PluginView />
-        </DeckyStateContextProvider>
-      ),
-      icon: (
-        <DeckyStateContextProvider deckyState={this.deckyState}>
-          <FaPlug />
-          <TabBadge />
-        </DeckyStateContextProvider>
-      ),
+      content: <PluginPanel />,
+      icon: tabIcon,
     });
+
+    this.routerHook.addRoute(FRAME_DECKY_ROUTE, () => (
+      <QuickAccessVisibleStateProvider tab={{ initialVisibility: true }}>
+        <div
+          data-decky-frame-page
+          style={{ padding: '24px', maxWidth: '960px', margin: '0 auto', height: '100%', overflowY: 'auto' }}
+        >
+          <PluginPanel />
+        </div>
+      </QuickAccessVisibleStateProvider>
+    ));
+    this.frameMenuHook.init(tabIcon);
 
     this.routerHook.addRoute('/decky/store', () => (
       <DeckyStateContextProvider deckyState={this.deckyState}>
@@ -376,6 +393,7 @@ class PluginLoader extends Logger {
     this.routerHook.removeRoute('/decky/settings');
     deinitSteamFixes();
     deinitFilepickerPatches();
+    this.frameMenuHook.deinit();
     this.routerHook.deinit();
     this.tabsHook.deinit();
     this.toaster.deinit();

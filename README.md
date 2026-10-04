@@ -93,7 +93,9 @@ Now that you have Decky Loader installed, you can start using plugins. Each plug
 
 Use an ARM64 loader built from this branch. Upstream releases without a `PluginLoader-aarch64` asset cannot be installed on Frame. ARM64 support does not make plugins with x86-only native binaries compatible.
 
-Installation support does not provide a Steam Frame menu entry. The experimental Frame-specific UI integration has been removed.
+On Steam Frame, open the system menu and select **Decky** (the plug icon) to open the plugin panel. The experimental integration reuses Frame's native menu buttons and Decky's fullscreen router; Steam Deck and Steam Machine continue to use the existing Quick Access Menu tab.
+
+This depends on Steam's internal React menu structure, not a public Valve extension API. If Steam changes that structure, check the frontend console for `FrameMenuHook` messages.
 
 ### 📦 Plugins
 
