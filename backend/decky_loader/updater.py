@@ -213,7 +213,6 @@ class Updater:
         version = self.remoteVer["tag_name"]
         download_url = None
         size_in_bytes = None
-        download_filename = "PluginLoader" if ON_LINUX else "PluginLoader.exe"
         asset_name = _get_loader_asset_name()
 
         for x in self.remoteVer["assets"]:
